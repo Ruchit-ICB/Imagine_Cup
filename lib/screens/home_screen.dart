@@ -42,13 +42,13 @@ class HomeScreen extends StatelessWidget {
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
-                      colors: [Theme.of(context).primaryColor, Theme.of(context).primaryColor.withOpacity(0.8)],
+                      colors: [Theme.of(context).primaryColor, Theme.of(context).primaryColor.withAlpha(204)],
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     borderRadius: BorderRadius.circular(16),
                     boxShadow: [
-                      BoxShadow(color: Theme.of(context).primaryColor.withOpacity(0.3), blurRadius: 10, offset: const Offset(0, 4)),
+                      BoxShadow(color: Theme.of(context).primaryColor.withAlpha(76), blurRadius: 10, offset: const Offset(0, 4)),
                     ],
                   ),
                   child: const Column(
@@ -86,7 +86,7 @@ class HomeScreen extends StatelessWidget {
                       margin: const EdgeInsets.only(bottom: 12),
                       child: ListTile(
                         leading: CircleAvatar(
-                          backgroundColor: _getRiskColor(item.riskLevel).withOpacity(0.1),
+                          backgroundColor: _getRiskColor(item.riskLevel).withAlpha(25),
                           child: Icon(Icons.history, color: _getRiskColor(item.riskLevel)),
                         ),
                         title: Text(item.possibleCondition, style: const TextStyle(fontWeight: FontWeight.bold)),

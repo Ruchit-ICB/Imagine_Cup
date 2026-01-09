@@ -55,7 +55,7 @@ class SymptomChip extends StatelessWidget {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         decoration: BoxDecoration(
-          color: isSelected ? theme.primaryColor.withOpacity(0.1) : Colors.white,
+          color: isSelected ? theme.primaryColor.withAlpha(25) : Colors.white,
           borderRadius: BorderRadius.circular(24),
           border: Border.all(
             color: isSelected ? theme.primaryColor : Colors.grey.shade300,
@@ -108,7 +108,7 @@ class InfoCard extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withAlpha(25),
                 shape: BoxShape.circle,
               ),
               child: Icon(icon, color: color, size: 28),
