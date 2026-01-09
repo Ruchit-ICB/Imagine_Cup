@@ -36,7 +36,9 @@ class HealthAssessment {
   final RiskLevel riskLevel;
   final String description;
   final String recommendation;
-  final String? referralLocation;
+  final String? referralLocation; // Description/Name
+  final double? latitude;
+  final double? longitude;
   final List<Medicine> suggestedMedicines;
   final List<String> homeRemedies;
   final List<String> warningSignsToWatch;
@@ -51,6 +53,8 @@ class HealthAssessment {
     required this.description,
     required this.recommendation,
     this.referralLocation,
+    this.latitude,
+    this.longitude,
     this.suggestedMedicines = const [],
     this.homeRemedies = const [],
     this.warningSignsToWatch = const [],

@@ -11,7 +11,9 @@ class AssessmentResultScreen extends StatelessWidget {
   const AssessmentResultScreen({super.key, required this.assessment});
 
   Future<void> _openMap() async {
-    final url = Uri.parse("https://www.google.com/maps/search/?api=1&query=28.6139,77.2090");
+    final lat = assessment.latitude ?? 28.6139;
+    final lng = assessment.longitude ?? 77.2090;
+    final url = Uri.parse("https://www.google.com/maps/search/?api=1&query=$lat,$lng");
     if (await canLaunchUrl(url)) {
       await launchUrl(url);
     }
@@ -21,6 +23,8 @@ class AssessmentResultScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = Provider.of<AppProvider>(context);
     final txHash = provider.lastTransactionHash;
+    final lat = assessment.latitude ?? 28.6139;
+    final lng = assessment.longitude ?? 77.2090;
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundColor,
@@ -70,7 +74,7 @@ class AssessmentResultScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Referral Coordination (Agentic AI)", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  Text("Nearest Referral: ${assessment.referralLocation}", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
                   const SizedBox(height: 12),
                   GestureDetector(
                     onTap: _openMap,
@@ -79,8 +83,8 @@ class AssessmentResultScreen extends StatelessWidget {
                       height: 180,
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(24),
-                        image: const DecorationImage(
-                          image: NetworkImage("https://maps.googleapis.com/maps/api/staticmap?center=28.6139,77.2090&zoom=14&size=600x300&markers=color:red%7C28.6139,77.2090&key=AIzaSyBm0dpYuy1E7fhpEFWq8mpm2NNivs9cUbo"),
+                        image: DecorationImage(
+                          image: NetworkImage("https://maps.googleapis.com/maps/api/staticmap?center=$lat,$lng&zoom=14&size=600x300&markers=color:red%7C$lat,$lng&key=AIzaSyBm0dpYuy1E7fhpEFWq8mpm2NNivs9cUbo"),
                           fit: BoxFit.cover,
                         ),
                         boxShadow: [
@@ -98,13 +102,13 @@ class AssessmentResultScreen extends StatelessWidget {
                         ),
                         padding: const EdgeInsets.all(20),
                         alignment: Alignment.bottomLeft,
-                        child: const Row(
+                        child: Row(
                           children: [
-                            Icon(Icons.location_on, color: Colors.white),
-                            SizedBox(width: 10),
+                            const Icon(Icons.location_on, color: Colors.white),
+                            const SizedBox(width: 10),
                             Expanded(
-                              child: Text("Tap to Navigate to Recommended Clinic", 
-                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                              child: Text("Route to ${assessment.referralLocation}", 
+                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                             ),
                           ],
                         ),

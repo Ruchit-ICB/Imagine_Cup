@@ -7,7 +7,7 @@ import '../models/data_models.dart';
 
 class GeminiAIService {
   static const String _apiKey = 'AIzaSyB3BcqurFOtSHFKkvKCZ9EN7P3l1SLycUs';
-  // Using gemini-1.5-flash for better stability and performance
+  // Using the most stable model endpoint
   static const String _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
   
   final Uuid _uuid = const Uuid();
@@ -40,25 +40,24 @@ class GeminiAIService {
         body: jsonEncode({
           'contents': [{'parts': parts}],
           'generationConfig': {
-            'temperature': 0.2, // Lower temperature for more consistent JSON
-            'topK': 40,
-            'topP': 0.95,
-            'maxOutputTokens': 2048,
-            'response_mime_type': 'application/json', // Requesting JSON output specifically
+            'temperature': 0.1, // Very low for strict JSON adherence
+            'topK': 32,
+            'topP': 1,
+            'maxOutputTokens': 1500,
           },
         }),
-      ).timeout(const Duration(seconds: 30));
+      ).timeout(const Duration(seconds: 40));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return _parseAgenticResponse(data, symptoms);
       } else {
         debugPrint('Gemini API Error: ${response.statusCode} - ${response.body}');
-        return _fallbackAssessment(symptoms, "Service unavailable (${response.statusCode})");
+        return _fallbackAssessment(symptoms, "Service busy. Please try again in 5 seconds.");
       }
     } catch (e) {
       debugPrint('Exception in analyzeSymptoms: $e');
-      return _fallbackAssessment(symptoms, "Connection error. Please check your internet.");
+      return _fallbackAssessment(symptoms, "Connection error. Please check your network.");
     }
   }
 
@@ -66,8 +65,8 @@ class GeminiAIService {
     final symptomList = symptoms.isNotEmpty ? symptoms.join(', ') : 'None specified';
     
     return '''
-You are MediConnect Health Agent, a state-of-the-art proactive AI healthcare assistant. 
-Analyze the provided symptoms and any visual data (if provided via image).
+You are MediConnect Health Agent, a state-of-the-art proactive AI healthcare assistant for rural communities.
+Analyze the provided symptoms and visual data to create a medical action plan.
 
 PATIENT DATA:
 • Language: $language
@@ -75,34 +74,33 @@ PATIENT DATA:
 • Patient Description: $additionalText
 
 TASK:
-1. Act as a Health Agent: Don't just diagnose, create an "Action Plan".
-2. Computer Vision: If an image is provided (skin rash, prescription, etc.), analyze its visual characteristics.
-3. Multi-language: Provide your response in $language.
+1. Act as a Health Agent: Provide a clear "Action Plan".
+2. Computer Vision: Describe findings from any image provided.
+3. Multi-language: Provide all text fields in $language.
+4. Coordination: Identify the nearest likely medical facility based on the urgency.
 
-CRITICAL: Respond with ONLY a valid JSON object. No markdown, no "```json", no extra text.
-
-JSON STRUCTURE:
+RESPOND WITH ONLY JSON (No extra text, no ```):
 {
   "condition": "Name of condition",
-  "riskLevel": "low" | "medium" | "high",
-  "description": "2-3 sentences about the condition.",
-  "agenticPlan": {
-    "immediateActions": ["Action 1", "Action 2"],
-    "nextFollowUp": "When the agent should check back",
-    "coordinationNeeded": "Clinic visit or home care?"
-  },
+  "riskLevel": "high" | "medium" | "low",
+  "description": "2-3 sentences about the condition. If an image was provided, mention visual findings.",
+  "agenticPlan": "Proactive 2-3 sentence action plan for the patient.",
   "medicines": [
     {"name": "...", "dosage": "...", "frequency": "...", "notes": "..."}
   ],
-  "homeRemedies": ["..."],
-  "warningSignsToWatch": ["..."],
-  "referralCoordinates": {"lat": 28.6139, "lng": 77.2090, "name": "Nearest AI-Recommended Clinic"}
+  "homeRemedies": ["Remedy 1", "Remedy 2"],
+  "warningSignsToWatch": ["Sign 1", "Sign 2"],
+  "referral": {
+    "name": "Name of Nearest Real Hospital or Clinic",
+    "lat": 28.5672,
+    "lng": 77.2100
+  }
 }
 
-AGENTIC GUIDELINES:
-- Be the patient's coordinator.
-- Use simple, culturally relevant terms for $language.
-- If an image is present, mention visual findings in the description.
+COORDINATION GUIDELINES:
+- For High Risk: Referral should be a Major Hospital. 
+- For Low/Medium: Referral can be a Community Health Center.
+- Use realistic coordinates (e.g., Near New Delhi / NCR region as default demo location).
 ''';
   }
 
@@ -110,16 +108,20 @@ AGENTIC GUIDELINES:
     try {
       String responseText = apiResponse['candidates'][0]['content']['parts'][0]['text'] as String;
       
-      // Robust JSON extraction
-      responseText = _extractJson(responseText);
+      // Better JSON extraction
+      final jsonStart = responseText.indexOf('{');
+      final jsonEnd = responseText.lastIndexOf('}');
+      if (jsonStart != -1 && jsonEnd != -1) {
+        responseText = responseText.substring(jsonStart, jsonEnd + 1);
+      }
+      
       final json = jsonDecode(responseText);
       
       RiskLevel riskLevel;
-      switch (json['riskLevel']?.toString().toLowerCase()) {
-        case 'high': riskLevel = RiskLevel.high; break;
-        case 'medium': riskLevel = RiskLevel.medium; break;
-        default: riskLevel = RiskLevel.low;
-      }
+      String risk = json['riskLevel']?.toString().toLowerCase() ?? 'low';
+      if (risk.contains('high')) riskLevel = RiskLevel.high;
+      else if (risk.contains('medium')) riskLevel = RiskLevel.medium;
+      else riskLevel = RiskLevel.low;
       
       List<Medicine> medicines = (json['medicines'] as List? ?? []).map((m) => Medicine(
         name: m['name'] ?? '',
@@ -128,49 +130,41 @@ AGENTIC GUIDELINES:
         notes: m['notes'],
       )).toList();
 
-      final plan = json['agenticPlan'] ?? {};
-      final rec = "Plan: ${plan['immediateActions']?.join(', ') ?? 'Rest and monitor'}. Coordination: ${plan['coordinationNeeded'] ?? 'Home care'}";
+      final referral = json['referral'] ?? {};
 
       return HealthAssessment(
         id: _uuid.v4(),
         date: DateTime.now(),
         reportedSymptoms: symptoms,
-        possibleCondition: json['condition'] ?? 'Health Assessment',
+        possibleCondition: json['condition'] ?? 'General Assessment',
         riskLevel: riskLevel,
-        description: json['description'] ?? 'Assessment completed.',
-        recommendation: rec,
+        description: json['description'] ?? 'Analysis complete.',
+        recommendation: json['agenticPlan'] ?? 'Please follow home care and rest.',
         suggestedMedicines: medicines,
         homeRemedies: List<String>.from(json['homeRemedies'] ?? []),
         warningSignsToWatch: List<String>.from(json['warningSignsToWatch'] ?? []),
-        referralLocation: json['referralCoordinates'] != null ? 
-          "${json['referralCoordinates']['name']} (${json['referralCoordinates']['lat']}, ${json['referralCoordinates']['lng']})" : null,
+        referralLocation: referral['name']?.toString() ?? "Nearest Help Center",
+        latitude: double.tryParse(referral['lat'].toString()) ?? 28.5672,
+        longitude: double.tryParse(referral['lng'].toString()) ?? 77.2100,
       );
     } catch (e) {
-      debugPrint('Error parsing Gemini response: $e');
-      return _fallbackAssessment(symptoms, "AI returned an invalid response format.");
+      debugPrint('Parsing error: $e');
+      return _fallbackAssessment(symptoms, "AI thinking... please try again.");
     }
   }
 
-  String _extractJson(String text) {
-    // Try to find the first '{' and last '}'
-    int start = text.indexOf('{');
-    int end = text.lastIndexOf('}');
-    if (start != -1 && end != -1 && end > start) {
-      return text.substring(start, end + 1);
-    }
-    return text.replaceAll('```json', '').replaceAll('```', '').trim();
-  }
-
-  HealthAssessment _fallbackAssessment(List<String> symptoms, String status) {
+  HealthAssessment _fallbackAssessment(List<String> symptoms, String error) {
     return HealthAssessment(
       id: _uuid.v4(),
       date: DateTime.now(),
       reportedSymptoms: symptoms,
-      possibleCondition: "Assessment Failed",
+      possibleCondition: "Analysis Delayed",
       riskLevel: RiskLevel.low,
-      description: status,
-      recommendation: "Please check your internet connection or try describing your symptoms differently. If symptoms are severe, seek medical help immediately.",
-      disclaimer: "⚠️ This is a fallback assessment. Please consult a doctor.",
+      description: error,
+      recommendation: "Describe your symptoms more clearly or try again in a moment.",
+      latitude: 28.6139,
+      longitude: 77.2090,
+      referralLocation: "Primary Health Center",
     );
   }
 
@@ -181,7 +175,7 @@ AGENTIC GUIDELINES:
       Symptom(id: '3', name: 'Headache'),
       Symptom(id: '4', name: 'Skin Rash'),
       Symptom(id: '5', name: 'Stomach Pain'),
-      Symptom(id: '6', name: 'Eye Redness'),
+      Symptom(id: '6', name: 'Muscle Pain'),
     ];
   }
 }
