@@ -1,4 +1,7 @@
 {
+    "buildCommand": "C:\\flutter\\bin\\flutter.bat build web",
+    "outputDirectory": "build/web",
+    "framework": null,
     "rewrites": [
         {
             "source": "/(.*)",
