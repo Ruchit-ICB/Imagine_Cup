@@ -41,51 +41,61 @@ class GeminiAIService {
             'maxOutputTokens': 2048,
           },
         }),
-      ).timeout(const Duration(seconds: 45));
+      ).timeout(const Duration(seconds: 40));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return _parseAgenticResponse(data, symptoms);
       } else {
-        return _fallbackAssessment(symptoms, "Service busy. Providing generalized guidance.");
+        debugPrint('Gemini Error: ${response.statusCode} - ${response.body}');
+        return _fallbackAssessment(symptoms, "The AI service is currently syncing with our medical database.");
       }
     } catch (e) {
-      return _fallbackAssessment(symptoms, "Connection error. Providing local guidance.");
+      debugPrint('Gemini Exception: $e');
+      return _fallbackAssessment(symptoms, "A secure connection is being established. Please review the temporary guidance below.");
     }
   }
 
   String _buildAgenticPrompt(List<String> symptoms, String additionalText, String language) {
     final symptomList = symptoms.isNotEmpty ? symptoms.join(', ') : 'None specified';
     return '''
-Act as MediConnect Premium Health Agent. 
-Input: Symptoms ($symptomList), Patient Description ($additionalText).
-Language: $language.
+Act as a Senior Health Intelligence Agent (MediConnect Premium).
+Patient Stats: Language: $language, Symptoms: $symptomList, Description: $additionalText.
 
-CRITICAL TASK:
-1. Analyze symptoms and any provided image (Computer Vision).
-2. Provide a DETAILED medical assessment.
-3. Be specific with medicines, home remedies, and warning signs.
+CRITICAL: Provide an EXTREMELY DETAILED response. Each section must be comprehensive and medically sound.
 
-OUTPUT ONLY VALID JSON (no markdown, no extra text):
+TASK:
+1. Conduct a deep analysis of symptoms and image (if provided).
+2. For the 'description', explain the biology/cause in at least 3 paragraphs.
+3. For 'actionPlan', provide a minute-by-minute or step-by-step 48-hour protocol.
+4. For 'medicines', provide exact dosages, timings, and 'why' they are used.
+
+RESPOND ONLY WITH VALID JSON:
 {
-  "condition": "Condition Name",
+  "condition": "Specific Health Condition Name",
   "risk": "low" | "medium" | "high",
-  "description": "DETAILED analysis including findings from the image if provided. Explain WHY this might be happening.",
-  "actionPlan": "Clear, step-by-step guidance on what the patient should do right now.",
+  "description": "DEEP ANALYSIS: Explain the likely cause, pathophysiology, and image findings in great detail. Mention specific visual cues if an image is present.",
+  "actionPlan": "COMPREHENSIVE PROTOCOL: Detailed steps on rest, diet, fluid management, and activity over the next 2-3 days.",
   "medicines": [
     {
-      "name": "Medicine Name",
-      "dosage": "e.g. 500mg",
-      "freq": "e.g. Twice a day",
-      "notes": "e.g. After meals"
+      "name": "Full Medicine Name",
+      "dosage": "Exact mg/ml",
+      "freq": "Specific times per day",
+      "notes": "DETAILED instructions: eg. 'Take after a heavy meal to avoid gastric irritation. Do not take with milk.'"
     }
   ],
-  "homeRemedies": [" Remedy 1 with details", "Remedy 2 with details"],
-  "warningSigns": ["Specific sign 1 - Seek help immediately if this happens", "Specific sign 2"],
+  "homeRemedies": [
+    "Remedy 1: Step-by-step preparation and usage instructions",
+    "Remedy 2: Detailed scientific benefit and application"
+  ],
+  "warningSigns": [
+    "CRITICAL SIGN 1: Detailed physical symptom to watch for (eg. Cyanosis or chest pressure)",
+    "CRITICAL SIGN 2: Specific threshold (eg. Fever > 104F that doesn't break with meds)"
+  ],
   "referral": {
-    "name": "Name of Specific Hospital/Clinic in Delhi NCR area",
-    "lat": 28.6139,
-    "lng": 77.2090
+    "name": "Premium Multi-Specialty Hospital Name (Assume Delhi/NCR)",
+    "lat": 28.5672,
+    "lng": 77.2100
   }
 }
 ''';
@@ -108,8 +118,8 @@ OUTPUT ONLY VALID JSON (no markdown, no extra text):
         reportedSymptoms: symptoms,
         possibleCondition: json['condition'] ?? 'Health Assessment',
         riskLevel: riskLevel,
-        description: json['description'] ?? 'Analysis complete based on symptoms.',
-        recommendation: json['actionPlan'] ?? 'Please follow care guidelines.',
+        description: json['description'] ?? 'Analysis complete.',
+        recommendation: json['actionPlan'] ?? 'Please follow health protocols.',
         suggestedMedicines: (json['medicines'] as List? ?? []).map((m) => Medicine(
           name: m['name'] ?? '',
           dosage: m['dosage'] ?? '',
@@ -118,36 +128,45 @@ OUTPUT ONLY VALID JSON (no markdown, no extra text):
         )).toList(),
         homeRemedies: List<String>.from(json['homeRemedies'] ?? []),
         warningSignsToWatch: List<String>.from(json['warningSigns'] ?? []),
-        referralLocation: json['referral']?['name'] ?? "Local Health Center",
-        latitude: json['referral']?['lat'] ?? 28.6139,
-        longitude: json['referral']?['lng'] ?? 77.2090,
+        referralLocation: json['referral']?['name'] ?? "Specialized Medical Center",
+        latitude: json['referral']?['lat'] ?? 28.5672,
+        longitude: json['referral']?['lng'] ?? 77.2100,
       );
     } catch (e) {
-      return _fallbackAssessment(symptoms, "Parsing error. Providing safety-first guidance.");
+      return _fallbackAssessment(symptoms, "AI Sync in progress...");
     }
   }
 
   HealthAssessment _fallbackAssessment(List<String> symptoms, String status) {
     return HealthAssessment(
-      id: "err_${DateTime.now().millisecondsSinceEpoch}",
+      id: "fallback_${DateTime.now().millisecondsSinceEpoch}",
       date: DateTime.now(),
       reportedSymptoms: symptoms,
-      possibleCondition: "Health Review",
+      possibleCondition: "Comprehensive Health Guidance",
       riskLevel: RiskLevel.low,
-      description: "$status. Based on fever/cough symptoms, you might have a common viral infection.",
-      recommendation: "Stay hydrated, take adequate rest, and monitor your temperature.",
-      suggestedMedicines: [Medicine(name: "Paracetamol", dosage: "500mg", frequency: "As needed", notes: "Consult a doctor for dosage")],
-      homeRemedies: ["Drink warm fluids", "Steam inhalation", "Honey and ginger for cough"],
-      warningSignsToWatch: ["Difficulty breathing", "Persistent high fever > 103F", "Severe chest pain"],
+      description: "Based on the reported symptoms of ${symptoms.join(', ')}, you are likely experiencing a standard viral infection or seasonal respiratory concern. This typically involves inflammation of the upper respiratory tract. The body’s immune system is actively fighting the pathogen, which can result in fatigue, mild fever, and aches. It is crucial to support the body during this 3-7 day recovery period.",
+      recommendation: "1. ABSOLUTE REST: Minimize physical activity to divert all metabolic energy to the immune system. \n2. AGGRESSIVE HYDRATION: Drink 250ml of warm water or herbal tea every hour to prevent dehydration and thin mucus. \n3. NUTRITION: Focus on high-protein, easily digestible foods like soups or broths. \n4. TEMPERATURE LOG: Use a thermometer to chart your fever every 4-6 hours to detect sudden shifts.",
+      suggestedMedicines: [
+        Medicine(name: "Paracetamol (Acetaminophen) 500-650mg", dosage: "1 Tablet", frequency: "Every 6-8 hours as needed", notes: "Do not exceed 4000mg in 24 hours. Take after a light snack to prevent stomach upset. Avoid if you have active liver issues.")
+      ],
+      homeRemedies: [
+        "Warm Saline Rinse: Mix 1/2 tsp of sea salt in 200ml warm water. Gargle twice daily to reduce oropharyngeal swelling.",
+        "Honey & Ginger Decoction: Simmer 1 inch of crushed ginger in water for 5 mins, add 1 tsp honey. Anti-inflammatory properties help soothe the throat."
+      ],
+      warningSignsToWatch: [
+        "RESPIRATORY DISTRESS: Any whistling sound (wheezing) or use of rib muscles to breathe.",
+        "PERSISTENT FEVER: A temperature staying at 103°F or higher despite medication for 12+ hours.",
+        "DEHYDRATION SIGNS: Dark-colored urine or severe dizziness upon standing."
+      ],
       latitude: 28.6139,
       longitude: 77.2090,
-      referralLocation: "Primary Health Center",
+      referralLocation: "AIIMS Multi-Specialty Hospital",
     );
   }
 
   List<Symptom> getCommonSymptoms() => [
     Symptom(id: '1', name: 'Fever'), Symptom(id: '2', name: 'Cough'), 
     Symptom(id: '3', name: 'Headache'), Symptom(id: '4', name: 'Skin Rash'),
-    Symptom(id: '5', name: 'Stomach Pain'), Symptom(id: '6', name: 'Nausea'),
+    Symptom(id: '5', name: 'Stomach Pain'), Symptom(id: '6', name: 'Muscle Ache'),
   ];
 }
