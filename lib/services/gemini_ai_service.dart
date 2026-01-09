@@ -38,37 +38,55 @@ class GeminiAIService {
           'contents': [{'parts': parts}],
           'generationConfig': {
             'temperature': 0.1,
-            'maxOutputTokens': 1000,
+            'maxOutputTokens': 2048,
           },
         }),
-      ).timeout(const Duration(seconds: 35));
+      ).timeout(const Duration(seconds: 45));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return _parseAgenticResponse(data, symptoms);
       } else {
-        return _fallbackAssessment(symptoms, "Service Syncing... try again.");
+        return _fallbackAssessment(symptoms, "Service busy. Providing generalized guidance.");
       }
     } catch (e) {
-      return _fallbackAssessment(symptoms, "Connection established, pending AI sync.");
+      return _fallbackAssessment(symptoms, "Connection error. Providing local guidance.");
     }
   }
 
   String _buildAgenticPrompt(List<String> symptoms, String additionalText, String language) {
     final symptomList = symptoms.isNotEmpty ? symptoms.join(', ') : 'None specified';
     return '''
-Act as MediConnect Proactive Health Agent. 
-Analyze: Symptoms ($symptomList), User Input ($additionalText).
+Act as MediConnect Premium Health Agent. 
+Input: Symptoms ($symptomList), Patient Description ($additionalText).
 Language: $language.
 
-You MUST respond with a valid JSON only, no markdown:
+CRITICAL TASK:
+1. Analyze symptoms and any provided image (Computer Vision).
+2. Provide a DETAILED medical assessment.
+3. Be specific with medicines, home remedies, and warning signs.
+
+OUTPUT ONLY VALID JSON (no markdown, no extra text):
 {
   "condition": "Condition Name",
   "risk": "low" | "medium" | "high",
-  "description": "Explanation of condition in $language",
-  "plan": "Step-by-step action plan",
-  "medicines": [{"name": "Name", "dosage": "Dosage", "freq": "Freq", "notes": "Notes"}],
-  "referral": {"name": "Local Health Center", "lat": 28.5355, "lng": 77.3910}
+  "description": "DETAILED analysis including findings from the image if provided. Explain WHY this might be happening.",
+  "actionPlan": "Clear, step-by-step guidance on what the patient should do right now.",
+  "medicines": [
+    {
+      "name": "Medicine Name",
+      "dosage": "e.g. 500mg",
+      "freq": "e.g. Twice a day",
+      "notes": "e.g. After meals"
+    }
+  ],
+  "homeRemedies": [" Remedy 1 with details", "Remedy 2 with details"],
+  "warningSigns": ["Specific sign 1 - Seek help immediately if this happens", "Specific sign 2"],
+  "referral": {
+    "name": "Name of Specific Hospital/Clinic in Delhi NCR area",
+    "lat": 28.6139,
+    "lng": 77.2090
+  }
 }
 ''';
   }
@@ -81,49 +99,55 @@ You MUST respond with a valid JSON only, no markdown:
       if (jsonStart != -1) text = text.substring(jsonStart, jsonEnd + 1);
       final json = jsonDecode(text);
       
-      RiskLevel riskLevel = (json['risk'] == 'high') ? RiskLevel.high : (json['risk'] == 'medium' ? RiskLevel.medium : RiskLevel.low);
+      String riskStr = json['risk']?.toString().toLowerCase() ?? 'low';
+      RiskLevel riskLevel = riskStr.contains('high') ? RiskLevel.high : (riskStr.contains('medium') ? RiskLevel.medium : RiskLevel.low);
       
       return HealthAssessment(
         id: _uuid.v4(),
         date: DateTime.now(),
         reportedSymptoms: symptoms,
-        possibleCondition: json['condition'] ?? 'Health Review',
+        possibleCondition: json['condition'] ?? 'Health Assessment',
         riskLevel: riskLevel,
-        description: json['description'] ?? 'Based on symptoms reported.',
-        recommendation: json['plan'] ?? 'Consult a doctor if symptoms persist.',
+        description: json['description'] ?? 'Analysis complete based on symptoms.',
+        recommendation: json['actionPlan'] ?? 'Please follow care guidelines.',
         suggestedMedicines: (json['medicines'] as List? ?? []).map((m) => Medicine(
           name: m['name'] ?? '',
           dosage: m['dosage'] ?? '',
           frequency: m['freq'] ?? '',
           notes: m['notes'],
         )).toList(),
-        referralLocation: json['referral']?['name'] ?? "Primary Care Center",
+        homeRemedies: List<String>.from(json['homeRemedies'] ?? []),
+        warningSignsToWatch: List<String>.from(json['warningSigns'] ?? []),
+        referralLocation: json['referral']?['name'] ?? "Local Health Center",
         latitude: json['referral']?['lat'] ?? 28.6139,
         longitude: json['referral']?['lng'] ?? 77.2090,
       );
     } catch (e) {
-      return _fallbackAssessment(symptoms, "Syncing AI insights...");
+      return _fallbackAssessment(symptoms, "Parsing error. Providing safety-first guidance.");
     }
   }
 
-  HealthAssessment _fallbackAssessment(List<String> symptoms, String error) {
+  HealthAssessment _fallbackAssessment(List<String> symptoms, String status) {
     return HealthAssessment(
-      id: "mock_${DateTime.now().millisecondsSinceEpoch}",
+      id: "err_${DateTime.now().millisecondsSinceEpoch}",
       date: DateTime.now(),
       reportedSymptoms: symptoms,
-      possibleCondition: "Health Analysis Complete",
+      possibleCondition: "Health Review",
       riskLevel: RiskLevel.low,
-      description: "You may have a mild health concern. Rest and stay hydrated.",
-      recommendation: "Follow home remedies and monitor your condition.",
+      description: "$status. Based on fever/cough symptoms, you might have a common viral infection.",
+      recommendation: "Stay hydrated, take adequate rest, and monitor your temperature.",
+      suggestedMedicines: [Medicine(name: "Paracetamol", dosage: "500mg", frequency: "As needed", notes: "Consult a doctor for dosage")],
+      homeRemedies: ["Drink warm fluids", "Steam inhalation", "Honey and ginger for cough"],
+      warningSignsToWatch: ["Difficulty breathing", "Persistent high fever > 103F", "Severe chest pain"],
       latitude: 28.6139,
       longitude: 77.2090,
-      referralLocation: "Community Clinic",
-      suggestedMedicines: [Medicine(name: "Paracetamol", dosage: "500mg", frequency: "Twice daily", notes: "After food")],
+      referralLocation: "Primary Health Center",
     );
   }
 
   List<Symptom> getCommonSymptoms() => [
     Symptom(id: '1', name: 'Fever'), Symptom(id: '2', name: 'Cough'), 
     Symptom(id: '3', name: 'Headache'), Symptom(id: '4', name: 'Skin Rash'),
+    Symptom(id: '5', name: 'Stomach Pain'), Symptom(id: '6', name: 'Nausea'),
   ];
 }

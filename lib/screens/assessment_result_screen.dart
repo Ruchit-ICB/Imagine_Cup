@@ -18,7 +18,7 @@ class AssessmentResultScreen extends StatelessWidget {
     final lng = assessment.longitude ?? 77.2090;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF3F7F4), // Soft green-grey background
+      backgroundColor: const Color(0xFFF3F7F4),
       appBar: AppBar(
         title: const Text("AI Health Analysis", style: TextStyle(color: Color(0xFF4A4A4A), fontWeight: FontWeight.bold, fontSize: 18)),
         backgroundColor: Colors.transparent,
@@ -32,17 +32,17 @@ class AssessmentResultScreen extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // HERO SECTION (Exactly like 3rd pic)
+            // Centered Hero Header (as requested in 3rd pic)
             _buildCenteredHero(assessment),
             
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
               child: Column(
                 children: [
-                  // Blockchain / Trust Banner
+                  // Blockchain Banner
                   if (txHash != null) _buildBlockchainBanner(txHash),
 
-                  // WHAT'S HAPPENING (Blue Section)
+                  // What's Happening (Detailed Description)
                   _buildSectionCard(
                     title: "What's Happening",
                     content: assessment.description,
@@ -51,7 +51,7 @@ class AssessmentResultScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // WHAT TO DO (Pink Section)
+                  // What To Do (Detailed Action Plan)
                   _buildSectionCard(
                     title: "What To Do",
                     content: assessment.recommendation,
@@ -60,18 +60,38 @@ class AssessmentResultScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 16),
 
-                  // MEDICINES (Green Section)
+                  // Suggested Medicines (Detailed)
                   if (assessment.suggestedMedicines.isNotEmpty)
                     _buildMedicineCard(assessment.suggestedMedicines),
+                  const SizedBox(height: 16),
+
+                  // Home Remedies (Detailed)
+                  if (assessment.homeRemedies.isNotEmpty)
+                    _buildListSectionCard(
+                      title: "Home Remedies",
+                      items: assessment.homeRemedies,
+                      icon: Icons.home_work_rounded,
+                      iconColor: Colors.teal,
+                    ),
+                  const SizedBox(height: 16),
+
+                  // When to See a Doctor (Warning Signs)
+                  if (assessment.warningSignsToWatch.isNotEmpty)
+                    _buildListSectionCard(
+                      title: "When to See a Doctor",
+                      items: assessment.warningSignsToWatch,
+                      icon: Icons.warning_amber_rounded,
+                      iconColor: Colors.orange,
+                    ),
 
                   const SizedBox(height: 24),
 
-                  // MAP SECTION
+                  // Referral Map
                   _buildReferralMap(assessment, lat, lng),
                   
                   const SizedBox(height: 32),
 
-                  // NAVIGATION ACTION
+                  // Navigation Button
                   ElevatedButton(
                     onPressed: () => _openMap(lat, lng),
                     style: ElevatedButton.styleFrom(
@@ -170,11 +190,58 @@ class AssessmentResultScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildListSectionCard({required String title, required List<String> items, required IconData icon, required Color iconColor}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 15, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: iconColor, borderRadius: BorderRadius.circular(12)),
+                child: Icon(icon, color: Colors.white, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF555555))),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...items.map((item) => Padding(
+            padding: const EdgeInsets.only(bottom: 10),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 6),
+                  child: Icon(Icons.circle, size: 8, color: Colors.grey),
+                ),
+                const SizedBox(width: 12),
+                Expanded(child: Text(item, style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5))),
+              ],
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMedicineCard(List<Medicine> medicines) {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(28)),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 15, offset: const Offset(0, 4))],
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -194,11 +261,22 @@ class AssessmentResultScreen extends StatelessWidget {
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(color: const Color(0xFFE8F5E9), borderRadius: BorderRadius.circular(16)),
-            child: Row(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.medication, color: Color(0xFF4CAF50)),
-                const SizedBox(width: 12),
-                Expanded(child: Text("${m.name} (${m.dosage}) - ${m.frequency}", style: const TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.w600))),
+                Row(
+                  children: [
+                    const Icon(Icons.medication, color: Color(0xFF4CAF50), size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(child: Text("${m.name} (${m.dosage})", style: const TextStyle(color: Color(0xFF1B5E20), fontWeight: FontWeight.bold, fontSize: 15))),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text("Frequency: ${m.frequency}", style: const TextStyle(color: Color(0xFF2E7D32), fontSize: 13)),
+                if (m.notes != null) ...[
+                  const SizedBox(height: 4),
+                  Text("Notes: ${m.notes}", style: const TextStyle(color: Color(0xFF2E7D32), fontSize: 12, fontStyle: FontStyle.italic)),
+                ]
               ],
             ),
           )),
@@ -226,8 +304,11 @@ class AssessmentResultScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text("Nearby Referral Hub", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF333333))),
-        const SizedBox(height: 12),
+         Padding(
+          padding: const EdgeInsets.only(left: 4, bottom: 12),
+          child: Text("Nearest Referral Hub: ${data.referralLocation}", 
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF333333))),
+        ),
         Container(
           height: 180,
           width: double.infinity,
@@ -237,6 +318,7 @@ class AssessmentResultScreen extends StatelessWidget {
               image: NetworkImage("https://maps.googleapis.com/maps/api/staticmap?center=$lat,$lng&zoom=14&size=600x300&markers=color:red%7C$lat,$lng&key=AIzaSyBm0dpYuy1E7fhpEFWq8mpm2NNivs9cUbo"),
               fit: BoxFit.cover,
             ),
+            boxShadow: [BoxShadow(color: Colors.black.withAlpha(10), blurRadius: 15, offset: const Offset(0, 4))],
           ),
         ),
       ],
