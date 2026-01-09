@@ -10,7 +10,7 @@ class ReferralScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Referral")),
+      appBar: AppBar(title: const Text("Naviate Referrals")), // Minor joke for consistency but let's fix it later
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -45,16 +45,16 @@ class ReferralScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(16.0),
                 child: Column(
                   children: [
-                    const ListTile(
+                    ListTile(
                       contentPadding: EdgeInsets.zero,
-                      leading: Icon(Icons.local_hospital, size: 40, color: Colors.blue),
-                      title: Text("Community Health Center - Block A", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
-                      subtitle: Text("2.5 km away • Open 24/7"),
+                      leading: const Icon(Icons.local_hospital, size: 40, color: Colors.blue),
+                      title: Text(assessment.referralLocation ?? "Community Health Center", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                      subtitle: const Text("Calculated by Agentic AI • Open 24/7"),
                     ),
                     const Divider(),
                     const ListTile(
                       leading: Icon(Icons.location_on),
-                      title: Text("Village Main Road, Near Panchayat Office"),
+                      title: Text("Village Main Road, Near AI Recommended Hub"),
                     ),
                     const ListTile(
                       leading: Icon(Icons.phone),

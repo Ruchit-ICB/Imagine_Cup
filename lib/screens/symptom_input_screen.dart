@@ -19,7 +19,6 @@ class _SymptomInputScreenState extends State<SymptomInputScreen> with TickerProv
   List<Symptom> _symptoms = [];
   late stt.SpeechToText _speech;
   bool _isListening = false;
-  bool _isSubmitHovered = false;
   Uint8List? _selectedImage;
   final ImagePicker _picker = ImagePicker();
 
