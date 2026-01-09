@@ -1,0 +1,9 @@
+Launching lib\main.dart on Chrome in debug mode...
+Waiting for connection from debug service on Chrome...          
+lib/core/theme.dart:39:18: Error: The argument type 'CardTheme' can't be assigned to the parameter type 'CardThemeData?'.
+ - 'CardTheme' is from 'package:flutter/src/material/card_theme.dart' ('flutter/packages/flutter/lib/src/material/card_theme.dart').
+ - 'CardThemeData' is from 'package:flutter/src/material/card_theme.dart' ('flutter/packages/flutter/lib/src/material/card_theme.dart').
+      cardTheme: CardTheme(
+                 ^
+Waiting for connection from debug service on Chrome...             18.9s
+Failed to compile application.
