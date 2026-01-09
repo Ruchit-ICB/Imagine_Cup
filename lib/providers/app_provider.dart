@@ -1,9 +1,12 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../models/data_models.dart';
 import '../services/gemini_ai_service.dart';
+import '../services/blockchain_service.dart';
 
 class AppProvider with ChangeNotifier {
   final GeminiAIService _aiService = GeminiAIService();
+  final BlockchainService _blockchain = BlockchainService();
 
   UserProfile? _currentUser;
   UserProfile? get currentUser => _currentUser;
@@ -14,8 +17,8 @@ class AppProvider with ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  String? _errorMessage;
-  String? get errorMessage => _errorMessage;
+  String? _lastTransactionHash;
+  String? get lastTransactionHash => _lastTransactionHash;
 
   // Login
   void login(String name, String language) {
@@ -39,36 +42,35 @@ class AppProvider with ChangeNotifier {
     return _aiService.getCommonSymptoms();
   }
 
-  Future<HealthAssessment?> submitAssessment(List<Symptom> selectedSymptoms, String otherSymptoms) async {
-    if (selectedSymptoms.isEmpty && otherSymptoms.isEmpty) return null;
-
+  Future<HealthAssessment?> submitAssessment({
+    required List<Symptom> selectedSymptoms, 
+    required String otherSymptoms,
+    Uint8List? imageBytes,
+  }) async {
     _isLoading = true;
-    _errorMessage = null;
     notifyListeners();
 
     try {
       List<String> symptomNames = selectedSymptoms.map((s) => s.name).toList();
       
-      // Add additional text as a symptom if provided
-      if (otherSymptoms.isNotEmpty) {
-        symptomNames.add(otherSymptoms);
-      }
+      HealthAssessment result = await _aiService.analyzeSymptoms(
+        symptoms: symptomNames,
+        additionalText: otherSymptoms,
+        imageBytes: imageBytes,
+        language: _currentUser?.language ?? 'English',
+      );
+
+      // Secure the record on the blockchain
+      _lastTransactionHash = await _blockchain.recordAssessment(result);
       
-      HealthAssessment result = await _aiService.analyzeSymptoms(symptomNames, otherSymptoms);
       _history.insert(0, result);
       return result;
     } catch (e) {
       debugPrint("Error in assessment: $e");
-      _errorMessage = "Failed to analyze symptoms. Please try again.";
       return null;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
-  }
-
-  void clearError() {
-    _errorMessage = null;
-    notifyListeners();
   }
 }
