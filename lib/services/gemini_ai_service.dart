@@ -1,16 +1,17 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import '../models/data_models.dart';
 
 class GeminiAIService {
   static const String _apiKey = 'AIzaSyB3BcqurFOtSHFKkvKCZ9EN7P3l1SLycUs';
-  static const String _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+  // Using gemini-1.5-flash for better stability and performance
+  static const String _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
   
   final Uuid _uuid = const Uuid();
 
-  /// Agentic AI: Analyzes symptoms and optional images (CV) to create a proactive plan.
   Future<HealthAssessment> analyzeSymptoms({
     required List<String> symptoms, 
     required String additionalText,
@@ -39,22 +40,25 @@ class GeminiAIService {
         body: jsonEncode({
           'contents': [{'parts': parts}],
           'generationConfig': {
-            'temperature': 0.4,
+            'temperature': 0.2, // Lower temperature for more consistent JSON
             'topK': 40,
             'topP': 0.95,
             'maxOutputTokens': 2048,
+            'response_mime_type': 'application/json', // Requesting JSON output specifically
           },
         }),
-      );
+      ).timeout(const Duration(seconds: 30));
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
         return _parseAgenticResponse(data, symptoms);
       } else {
-        throw Exception('API Error: ${response.statusCode}');
+        debugPrint('Gemini API Error: ${response.statusCode} - ${response.body}');
+        return _fallbackAssessment(symptoms, "Service unavailable (${response.statusCode})");
       }
     } catch (e) {
-      return _fallbackAssessment(symptoms, additionalText);
+      debugPrint('Exception in analyzeSymptoms: $e');
+      return _fallbackAssessment(symptoms, "Connection error. Please check your internet.");
     }
   }
 
@@ -75,7 +79,9 @@ TASK:
 2. Computer Vision: If an image is provided (skin rash, prescription, etc.), analyze its visual characteristics.
 3. Multi-language: Provide your response in $language.
 
-Respond with ONLY JSON:
+CRITICAL: Respond with ONLY a valid JSON object. No markdown, no "```json", no extra text.
+
+JSON STRUCTURE:
 {
   "condition": "Name of condition",
   "riskLevel": "low" | "medium" | "high",
@@ -96,15 +102,17 @@ Respond with ONLY JSON:
 AGENTIC GUIDELINES:
 - Be the patient's coordinator.
 - Use simple, culturally relevant terms for $language.
-- If an image is present, mention visual findings (e.g., "The image shows redness...")
+- If an image is present, mention visual findings in the description.
 ''';
   }
 
   HealthAssessment _parseAgenticResponse(Map<String, dynamic> apiResponse, List<String> symptoms) {
     try {
-      final responseText = apiResponse['candidates'][0]['content']['parts'][0]['text'] as String;
-      final cleanJson = responseText.replaceAll('```json', '').replaceAll('```', '').trim();
-      final json = jsonDecode(cleanJson);
+      String responseText = apiResponse['candidates'][0]['content']['parts'][0]['text'] as String;
+      
+      // Robust JSON extraction
+      responseText = _extractJson(responseText);
+      final json = jsonDecode(responseText);
       
       RiskLevel riskLevel;
       switch (json['riskLevel']?.toString().toLowerCase()) {
@@ -120,17 +128,16 @@ AGENTIC GUIDELINES:
         notes: m['notes'],
       )).toList();
 
-      // Combine direct recommendation with agentic plan
       final plan = json['agenticPlan'] ?? {};
-      final rec = "Plan: ${plan['immediateActions']?.join(', ')}. Coordination: ${plan['coordinationNeeded']}";
+      final rec = "Plan: ${plan['immediateActions']?.join(', ') ?? 'Rest and monitor'}. Coordination: ${plan['coordinationNeeded'] ?? 'Home care'}";
 
       return HealthAssessment(
         id: _uuid.v4(),
         date: DateTime.now(),
         reportedSymptoms: symptoms,
-        possibleCondition: json['condition'] ?? 'Assessment',
+        possibleCondition: json['condition'] ?? 'Health Assessment',
         riskLevel: riskLevel,
-        description: json['description'] ?? '',
+        description: json['description'] ?? 'Assessment completed.',
         recommendation: rec,
         suggestedMedicines: medicines,
         homeRemedies: List<String>.from(json['homeRemedies'] ?? []),
@@ -139,20 +146,31 @@ AGENTIC GUIDELINES:
           "${json['referralCoordinates']['name']} (${json['referralCoordinates']['lat']}, ${json['referralCoordinates']['lng']})" : null,
       );
     } catch (e) {
-      return _fallbackAssessment(symptoms, "Error parsing AI response.");
+      debugPrint('Error parsing Gemini response: $e');
+      return _fallbackAssessment(symptoms, "AI returned an invalid response format.");
     }
   }
 
-  // Fallback (same as before)
-  HealthAssessment _fallbackAssessment(List<String> symptoms, String err) {
+  String _extractJson(String text) {
+    // Try to find the first '{' and last '}'
+    int start = text.indexOf('{');
+    int end = text.lastIndexOf('}');
+    if (start != -1 && end != -1 && end > start) {
+      return text.substring(start, end + 1);
+    }
+    return text.replaceAll('```json', '').replaceAll('```', '').trim();
+  }
+
+  HealthAssessment _fallbackAssessment(List<String> symptoms, String status) {
     return HealthAssessment(
       id: _uuid.v4(),
       date: DateTime.now(),
       reportedSymptoms: symptoms,
       possibleCondition: "Assessment Failed",
       riskLevel: RiskLevel.low,
-      description: "We couldn't reach the AI agent. $err",
-      recommendation: "Please try again later or consult a doctor.",
+      description: status,
+      recommendation: "Please check your internet connection or try describing your symptoms differently. If symptoms are severe, seek medical help immediately.",
+      disclaimer: "⚠️ This is a fallback assessment. Please consult a doctor.",
     );
   }
 

@@ -138,7 +138,7 @@ class AssessmentResultScreen extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(vertical: 18),
                       backgroundColor: AppTheme.primaryColor,
                     ),
-                    child: const Text("Naviate Now", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+                    child: const Text("Navigate Now", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
                   ),
                 ),
               ],
