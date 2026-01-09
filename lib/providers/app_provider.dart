@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import '../models/data_models.dart';
-import '../services/mock_ai_service.dart';
+import '../services/gemini_ai_service.dart';
 
 class AppProvider with ChangeNotifier {
-  final MockAIService _aiService = MockAIService();
+  final GeminiAIService _aiService = GeminiAIService();
 
   UserProfile? _currentUser;
   UserProfile? get currentUser => _currentUser;
@@ -14,13 +14,16 @@ class AppProvider with ChangeNotifier {
   bool _isLoading = false;
   bool get isLoading => _isLoading;
 
-  // Login (Mock)
+  String? _errorMessage;
+  String? get errorMessage => _errorMessage;
+
+  // Login
   void login(String name, String language) {
     _currentUser = UserProfile(
       id: "u123",
       name: name.isEmpty ? "Guest" : name,
-      age: 45,
-      gender: "Male",
+      age: 0,
+      gender: "",
       language: language,
     );
     notifyListeners();
@@ -40,19 +43,32 @@ class AppProvider with ChangeNotifier {
     if (selectedSymptoms.isEmpty && otherSymptoms.isEmpty) return null;
 
     _isLoading = true;
+    _errorMessage = null;
     notifyListeners();
 
     try {
       List<String> symptomNames = selectedSymptoms.map((s) => s.name).toList();
+      
+      // Add additional text as a symptom if provided
+      if (otherSymptoms.isNotEmpty) {
+        symptomNames.add(otherSymptoms);
+      }
+      
       HealthAssessment result = await _aiService.analyzeSymptoms(symptomNames, otherSymptoms);
       _history.insert(0, result);
       return result;
     } catch (e) {
       debugPrint("Error in assessment: $e");
+      _errorMessage = "Failed to analyze symptoms. Please try again.";
       return null;
     } finally {
       _isLoading = false;
       notifyListeners();
     }
+  }
+
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
   }
 }
