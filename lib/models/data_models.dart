@@ -45,10 +45,15 @@ class HealthAssessment {
   final String disclaimer;
   
   // Imagine Cup AI Enhancements
-  final double wellnessScore; // 0-100 Predictive Score
-  final String recoveryOutlook; // Timeline explanation
-  final String? ocrAnalysis; // Data parsed from Prescription/Image
-  final List<String> lifestyleTips; // Holistic coaching
+  final double wellnessScore;
+  final String recoveryOutlook;
+  final String? ocrAnalysis;
+  final List<String> lifestyleTips;
+
+  // Gold Standard Features
+  final List<String> safetyFlags; // Drug interactions or life-critical warnings
+  final String? longitudinalInsight; // Analysis based on patient history
+  final String? visualFocusPoints; // Description of where AI focused in image
 
   HealthAssessment({
     required this.id,
@@ -68,7 +73,24 @@ class HealthAssessment {
     this.recoveryOutlook = "Standard recovery expected.",
     this.ocrAnalysis,
     this.lifestyleTips = const [],
+    this.safetyFlags = const [],
+    this.longitudinalInsight,
+    this.visualFocusPoints,
     this.disclaimer = "This is AI-generated advice. Always consult a healthcare professional for medical decisions.",
+  });
+}
+
+class CommunityInsight {
+  final String region;
+  final String headline;
+  final String advice;
+  final IconData icon;
+
+  CommunityInsight({
+    required this.region,
+    required this.headline,
+    required this.advice,
+    this.icon = Icons.info_outline,
   });
 }
 

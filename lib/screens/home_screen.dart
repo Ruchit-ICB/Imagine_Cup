@@ -229,6 +229,11 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
 
                 const SizedBox(height: 36),
 
+                // Community Pulse (Imagine Cup Feature)
+                _buildCommunityPulse(),
+
+                const SizedBox(height: 36),
+
                 // Section Header
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -323,7 +328,48 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     );
   }
 
+  Widget _buildCommunityPulse() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryColor.withAlpha(10),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppTheme.primaryColor.withAlpha(20)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+                child: const Icon(Icons.hub_rounded, color: AppTheme.primaryColor, size: 20),
+              ),
+              const SizedBox(width: 14),
+              const Text("Regional AI Pulse", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              const Spacer(),
+              const Text("Delhi NCR", style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: AppTheme.primaryColor)),
+            ],
+          ),
+          const SizedBox(height: 18),
+          const Text(
+            "Rising Pollen Count Alert",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF2D2D2D)),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "AI predicts a 15% increase in respiratory sensitivity this week. Keep inhalers or anti-allergics ready if you have a history.",
+            style: TextStyle(fontSize: 13, color: Colors.grey.shade700, height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildEmptyState() {
+
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 24),

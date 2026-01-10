@@ -13,14 +13,13 @@ class AssessmentResultScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = Provider.of<AppProvider>(context);
-    final txHash = provider.lastTransactionHash;
     final lat = assessment.latitude ?? 28.6139;
     final lng = assessment.longitude ?? 77.2090;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAF9), // Slightly cooler green-grey
+      backgroundColor: const Color(0xFFF8FAF9),
       appBar: AppBar(
-        title: const Text("AI Health Dashboard", style: TextStyle(color: Color(0xFF2D2D2D), fontWeight: FontWeight.bold, fontSize: 18)),
+        title: const Text("Gold Standard Analysis", style: TextStyle(color: Color(0xFF2D2D2D), fontWeight: FontWeight.bold, fontSize: 18)),
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
@@ -32,67 +31,75 @@ class AssessmentResultScreen extends StatelessWidget {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // HERO SECTION: Predictive Wellness & Progress
+            // HERO SECTION
             _buildImagineCupHero(assessment),
             
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
               child: Column(
                 children: [
-                  // OCR / Image Analysis Breakdown (New Imagine Cup Feature)
+                  // SAFETY AGENT FLAGS (Imagine Cup Feature)
+                  if (assessment.safetyFlags.isNotEmpty)
+                    _buildSafetyCard(assessment.safetyFlags),
+
+                  // LONGITUDINAL INSIGHT (Imagine Cup Feature)
+                  if (assessment.longitudinalInsight != null)
+                    _buildInsightCard("Health Journey Agent", assessment.longitudinalInsight!, Icons.history_edu_rounded, Colors.purple),
+
+                  // AI VISION FOCUS (Imagine Cup Feature)
+                  if (assessment.visualFocusPoints != null)
+                    _buildInsightCard("AI Visual Focus", assessment.visualFocusPoints!, Icons.center_focus_strong_rounded, Colors.blueAccent),
+
+                  // OCR breakdown
                   if (assessment.ocrAnalysis != null)
                     _buildOCRCard(assessment.ocrAnalysis!),
 
-                  // WHAT'S HAPPENING (Clinical Analysis)
+                  // WHAT'S HAPPENING
                   _buildSectionCard(
-                    title: "Clinical Analysis",
+                    title: "Clinical Deep Analysis",
                     content: assessment.description,
                     icon: Icons.biotech_rounded,
                     iconColor: Colors.blueAccent,
                   ),
                   const SizedBox(height: 16),
 
-                  // RECOVERY OUTLOOK (New Imagine Cup Feature)
+                  // RECOVERY TIMELINE
                   _buildSectionCard(
-                    title: "Recovery Outlook",
+                    title: "Recovery Timeline",
                     content: assessment.recoveryOutlook,
-                    icon: Icons.timeline_rounded,
+                    icon: Icons.auto_graph_rounded,
                     iconColor: Colors.deepPurpleAccent,
                   ),
                   const SizedBox(height: 16),
 
-                  // SUGGESTED MEDICINES
+                  // MEDICINES
                   if (assessment.suggestedMedicines.isNotEmpty)
                     _buildMedicineCard(assessment.suggestedMedicines),
                   const SizedBox(height: 16),
 
-                  // LIFESTYLE COACHING (New Imagine Cup Feature)
+                  // HOLISTIC COACHING
                   if (assessment.lifestyleTips.isNotEmpty)
                     _buildListSectionCard(
-                      title: "Holistic Coaching",
+                      title: "AI Holistic Coaching",
                       items: assessment.lifestyleTips,
-                      icon: Icons.eco_rounded,
+                      icon: Icons.spa_rounded,
                       iconColor: Colors.teal,
                     ),
                   const SizedBox(height: 16),
 
-                  // RED FLAGS
+                  // WARNING SIGNS
                   if (assessment.warningSignsToWatch.isNotEmpty)
                     _buildListSectionCard(
                       title: "Critical Red Flags",
                       items: assessment.warningSignsToWatch,
-                      icon: Icons.report_problem_rounded,
+                      icon: Icons.report_gmailerrorred_rounded,
                       iconColor: Colors.orange,
                     ),
 
                   const SizedBox(height: 24),
-
-                  // MAP & REFERRAL
                   _buildReferralMap(assessment, lat, lng),
-                  
                   const SizedBox(height: 32),
 
-                  // ACTION BUTTONS
                   Row(
                     children: [
                       Expanded(
@@ -133,63 +140,107 @@ class AssessmentResultScreen extends StatelessWidget {
 
   Widget _buildImagineCupHero(HealthAssessment data) {
     Color baseColor = data.riskLevel == RiskLevel.high ? Colors.red : (data.riskLevel == RiskLevel.medium ? Colors.orange : const Color(0xFF4CAF50));
-    
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [baseColor.withAlpha(50), baseColor.withAlpha(120)],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-        ),
+        gradient: LinearGradient(colors: [baseColor.withAlpha(50), baseColor.withAlpha(120)], begin: Alignment.topCenter, end: Alignment.bottomCenter),
         borderRadius: const BorderRadius.vertical(bottom: Radius.circular(40)),
       ),
       padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-      child: Column(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          Stack(
+            alignment: Alignment.center,
             children: [
-              // Radial Wellness Gauge
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  SizedBox(
-                    height: 100,
-                    width: 100,
-                    child: CircularProgressIndicator(
-                      value: data.wellnessScore / 100,
-                      strokeWidth: 10,
-                      backgroundColor: Colors.white.withAlpha(50),
-                      valueColor: AlwaysStoppedAnimation<Color>(baseColor),
-                    ),
-                  ),
-                  Column(
-                    children: [
-                      Text("${data.wellnessScore.toInt()}%", style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 24, color: Color(0xFF2D2D2D))),
-                      const Text("WELLNESS", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8, color: Colors.grey)),
-                    ],
-                  ),
-                ],
-              ),
-              const SizedBox(width: 40),
-              // Condition Info
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(data.possibleCondition, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF2D2D2D))),
-                    const SizedBox(height: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(20)),
-                      child: Text("${data.riskLevel.name.toUpperCase()} RISK", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 10)),
-                    ),
-                  ],
+              SizedBox(
+                height: 100, width: 100,
+                child: CircularProgressIndicator(
+                  value: data.wellnessScore / 100,
+                  strokeWidth: 10,
+                  backgroundColor: Colors.white.withAlpha(50),
+                  valueColor: AlwaysStoppedAnimation<Color>(baseColor),
                 ),
+              ),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text("${data.wellnessScore.toInt()}%", style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 24)),
+                  const Text("WELLNESS", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 8, color: Colors.grey)),
+                ],
               ),
             ],
           ),
+          const SizedBox(width: 32),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(data.possibleCondition, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF2D2D2D))),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(20)),
+                  child: Text("${data.riskLevel.name.toUpperCase()} RISK", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 10)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSafetyCard(List<String> flags) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(color: const Color(0xFFFFF1F0), borderRadius: BorderRadius.circular(24), border: Border.all(color: Colors.red.withAlpha(30))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Row(
+            children: [
+              Icon(Icons.gpp_maybe_rounded, color: Colors.red, size: 24),
+              SizedBox(width: 12),
+              Text("Safety Interaction Agent", style: TextStyle(color: Colors.red, fontWeight: FontWeight.w900, fontSize: 16)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          ...flags.map((f) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text("• ", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+                Expanded(child: Text(f, style: const TextStyle(color: Colors.red, fontSize: 14, fontWeight: FontWeight.w500))),
+              ],
+            ),
+          )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildInsightCard(String title, String content, IconData icon, Color color) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(28), border: Border.all(color: color.withAlpha(20))),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: color, size: 22),
+              const SizedBox(width: 12),
+              Text(title, style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 16)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(content, style: TextStyle(color: Colors.grey.shade800, fontSize: 14, height: 1.5)),
         ],
       ),
     );
@@ -200,18 +251,15 @@ class AssessmentResultScreen extends StatelessWidget {
       width: double.infinity,
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF2D2D2D),
-        borderRadius: BorderRadius.circular(24),
-      ),
+      decoration: BoxDecoration(color: const Color(0xFF2D2D2D), borderRadius: BorderRadius.circular(24)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
             children: [
-              Icon(Icons.remove_red_eye_rounded, color: Colors.blueAccent, size: 20),
+              Icon(Icons.visibility_rounded, color: Colors.blueAccent, size: 20),
               SizedBox(width: 12),
-              Text("AI Vision Findings", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
+              Text("AI Prescription Parser", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
             ],
           ),
           const SizedBox(height: 12),
@@ -225,23 +273,15 @@ class AssessmentResultScreen extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [BoxShadow(color: Colors.black.withAlpha(5), blurRadius: 20, offset: const Offset(0, 8))],
-      ),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(28)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: iconColor.withAlpha(30), borderRadius: BorderRadius.circular(12)),
-                child: Icon(icon, color: iconColor, size: 22),
-              ),
+              Icon(icon, color: iconColor, size: 22),
               const SizedBox(width: 14),
-              Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF555555))),
+              Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 16),
@@ -260,15 +300,7 @@ class AssessmentResultScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(color: iconColor.withAlpha(30), borderRadius: BorderRadius.circular(12)),
-                child: Icon(icon, color: iconColor, size: 22),
-              ),
-              const SizedBox(width: 14),
-              Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF555555))),
-            ],
+            children: [Icon(icon, color: iconColor, size: 22), const SizedBox(width: 14), Text(title, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.bold))],
           ),
           const SizedBox(height: 16),
           ...items.map((item) => Padding(
@@ -278,7 +310,7 @@ class AssessmentResultScreen extends StatelessWidget {
               children: [
                 Icon(Icons.check_circle_outline_rounded, size: 18, color: iconColor),
                 const SizedBox(width: 12),
-                Expanded(child: Text(item, style: const TextStyle(fontSize: 14, color: Colors.black87, height: 1.5))),
+                Expanded(child: Text(item, style: const TextStyle(fontSize: 14, color: Colors.black87))),
               ],
             ),
           )),
@@ -296,27 +328,19 @@ class AssessmentResultScreen extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Row(
-            children: [
-              Icon(Icons.medical_services_rounded, color: Colors.green, size: 22),
-              SizedBox(width: 14),
-              Text("AI Prescription Support", style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF555555))),
-            ],
+            children: [Icon(Icons.medical_services_rounded, color: Colors.green, size: 22), SizedBox(width: 14), Text("AI Prescription Analysis", style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold))],
           ),
           const SizedBox(height: 16),
           ...medicines.map((m) => Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: const Color(0xFFE8F5E9), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.green.withAlpha(30))),
+            decoration: BoxDecoration(color: const Color(0xFFF1F8E9), borderRadius: BorderRadius.circular(16)),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("${m.name} (${m.dosage})", style: const TextStyle(color: Color(0xFF1B5E20), fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 4),
-                Text(m.frequency, style: const TextStyle(color: Color(0xFF2E7D32), fontSize: 13, fontWeight: FontWeight.w600)),
-                if (m.notes != null) ...[
-                  const Divider(),
-                  Text("Notes: ${m.notes}", style: const TextStyle(color: Color(0xFF2E7D32), fontSize: 12, fontStyle: FontStyle.italic)),
-                ]
+                Text("${m.name} (${m.dosage})", style: const TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.bold)),
+                Text(m.frequency, style: const TextStyle(color: Color(0xFF388E3C), fontSize: 13)),
+                if (m.notes != null) Text("Note: ${m.notes}", style: const TextStyle(fontSize: 12, fontStyle: FontStyle.italic)),
               ],
             ),
           )),
@@ -332,7 +356,7 @@ class AssessmentResultScreen extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text("Referral Network", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Color(0xFF333333))),
+            const Text("Referral Hub", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
             Text(data.referralLocation ?? "", style: const TextStyle(fontSize: 12, color: Colors.blueAccent, fontWeight: FontWeight.bold)),
           ],
         ),

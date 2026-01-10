@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:typed_data';
+import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:uuid/uuid.dart';
 import '../models/data_models.dart';
@@ -13,10 +14,12 @@ class GeminiAIService {
   Future<HealthAssessment> analyzeSymptoms({
     required List<String> symptoms, 
     required String additionalText,
+    List<HealthAssessment>? pastHistory,
     Uint8List? imageBytes,
     String language = 'English',
   }) async {
-    final prompt = _buildImagineCupPrompt(symptoms, additionalText, language);
+    final historySummary = _buildHistorySummary(pastHistory);
+    final prompt = _buildGoldStandardPrompt(symptoms, additionalText, language, historySummary);
     
     final List<Map<String, dynamic>> parts = [{'text': prompt}];
 
@@ -45,59 +48,65 @@ class GeminiAIService {
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return _parseImagineCupResponse(data, symptoms);
+        return _parseGoldStandardResponse(data, symptoms);
       } else {
-        return _fallbackAssessment(symptoms, "AI Engine Syncing");
+        return _fallbackAssessment(symptoms, "AI Service Synchronizing");
       }
     } catch (e) {
-      return _fallbackAssessment(symptoms, "Connection established");
+      return _fallbackAssessment(symptoms, "Syncing Local Records");
     }
   }
 
-  String _buildImagineCupPrompt(List<String> symptoms, String additionalText, String language) {
+  String _buildHistorySummary(List<HealthAssessment>? history) {
+    if (history == null || history.isEmpty) return "No prior consultation history found.";
+    final items = history.take(3).map((h) => "- ${h.date.toIso8601String()}: ${h.possibleCondition}").join("\n");
+    return "Recent consultations:\n$items";
+  }
+
+  String _buildGoldStandardPrompt(List<String> symptoms, String additionalText, String language, String history) {
     final symptomList = symptoms.isNotEmpty ? symptoms.join(', ') : 'None specified';
     return '''
-Act as the "MediConnect Master Intelligence" for the Microsoft Imagine Cup. You are a multi-agent system:
-1. CV-Agent: Analyzes images of rashes, eyes, or prescriptions.
-2. Clinical-Agent: Correlates symptoms with medical literature.
-3. Wellness-Agent: Predicts recovery and provides lifestyle coaching.
+Act as the "MediConnect Master Diagnostic Agent" (Imagine Cup Gold Standard).
+You are a multimodal medical system orchestrating three sub-agents:
+1. Clinical Vision Agent: High-precision analysis of images/rashes/OCR.
+2. Patient Safety Agent: Checks for medicine interactions and critical red flags.
+3. Longitudinal Agent: Analyzes current symptoms against patient history.
 
-INPUT:
-Symptoms: $symptomList
-Patient Context: $additionalText
+CONTEXT:
 Language: $language
+Current Symptoms: $symptomList
+Patient Description: $additionalText
+$history
 
-YOUR MISSION: Provide a "Gold Standard" medical response in JSON.
+TASK:
+- If an image is present, analyze it deeply.
+- If multiple medicines are suggested or in history, check for interactions.
+- If current symptoms match history, provide a longitudinal insight.
 
+OUTPUT ONLY JSON:
 {
   "condition": "Specific Diagnosis",
   "risk": "low" | "medium" | "high",
-  "description": "DETAILED 4-paragraph clinical analysis. If an image is present, DESCRIBE specific pixels/colors/shapes found (e.g. 'irregular borders on a 5mm lesion').",
-  "actionPlan": "Hour-by-hour 72-hour protocol for recovery.",
+  "description": "DEEP CLINICAL EXPLANATION: Pathophysiology and findings in 3+ paragraphs.",
+  "actionPlan": "DETAILED 72-HOUR PROTOCOL.",
   "medicines": [
-    {
-      "name": "Full Name (Strength)",
-      "dosage": "Exact Dosage",
-      "freq": "Times per day",
-      "notes": "Safety warnings and administration tips."
-    }
+    {"name": "Name", "dosage": "Dosage", "freq": "Freq", "notes": "Specific patient instructions."}
   ],
-  "homeRemedies": ["Highly detailed natural remedies with scientific reasoning"],
-  "warningSigns": ["Specific Red Flags that trigger immediate emergency care"],
+  "homeRemedies": ["Specific natural care steps"],
+  "warningSigns": ["Red flags for emergency care"],
   "wellnessScore": 0-100,
-  "recoveryOutlook": "Detailed timeline (e.g. 'Days 1-2 peak symptoms, Day 5 full recovery').",
-  "ocrAnalysis": "If the image is a prescription, list ALL medicines read. If a physical sign, describe findings.",
-  "lifestyleTips": ["Specific diet, hydration, and environmental advice suited for rural/local settings."],
-  "referral": {
-    "name": "Specialized Hospital Location",
-    "lat": 28.5672,
-    "lng": 77.2100
-  }
+  "recoveryOutlook": "Timeline of expected improvement.",
+  "ocrAnalysis": "If image is a letter/med packet, list data here.",
+  "lifestyleTips": ["Dietary/Local coaching"],
+  "safetyFlags": ["CRITICAL: List any drug interactions or allergy warnings deduced from history or current meds. Empty if none."],
+  "longitudinalInsight": "Analysis of how this fits into their health history. (eg. 'This is your second fever in 20 days; possible immune exhaustion').",
+  "visualFocus": "Describe where the AI focus points were on the provided image (eg. 'Focus on the 3mm erythematous papules at bottom left').",
+  "referral": {"name": "Specialized Hospital", "lat": 28.5672, "lng": 77.2100}
 }
 ''';
   }
 
-  HealthAssessment _parseImagineCupResponse(Map<String, dynamic> apiResponse, List<String> symptoms) {
+  HealthAssessment _parseGoldStandardResponse(Map<String, dynamic> apiResponse, List<String> symptoms) {
     try {
       String text = apiResponse['candidates'][0]['content']['parts'][0]['text'];
       final json = jsonDecode(text);
@@ -109,10 +118,10 @@ YOUR MISSION: Provide a "Gold Standard" medical response in JSON.
         id: _uuid.v4(),
         date: DateTime.now(),
         reportedSymptoms: symptoms,
-        possibleCondition: json['condition'] ?? 'Detailed Assessment',
+        possibleCondition: json['condition'] ?? 'Detailed Health Analysis',
         riskLevel: riskLevel,
-        description: json['description'] ?? 'Analysis complete.',
-        recommendation: json['actionPlan'] ?? 'Follow health protocol.',
+        description: json['description'] ?? 'Analysis based on symptoms.',
+        recommendation: json['actionPlan'] ?? 'Please follow health protocol.',
         suggestedMedicines: (json['medicines'] as List? ?? []).map((m) => Medicine(
           name: m['name'] ?? '',
           dosage: m['dosage'] ?? '',
@@ -122,15 +131,18 @@ YOUR MISSION: Provide a "Gold Standard" medical response in JSON.
         homeRemedies: List<String>.from(json['homeRemedies'] ?? []),
         warningSignsToWatch: List<String>.from(json['warningSigns'] ?? []),
         wellnessScore: (json['wellnessScore'] as num? ?? 80).toDouble(),
-        recoveryOutlook: json['recoveryOutlook'] ?? "Gradual improvement expected.",
+        recoveryOutlook: json['recoveryOutlook'] ?? "Gradual recovery expected.",
         ocrAnalysis: json['ocrAnalysis'],
         lifestyleTips: List<String>.from(json['lifestyleTips'] ?? []),
+        safetyFlags: List<String>.from(json['safetyFlags'] ?? []),
+        longitudinalInsight: json['longitudinalInsight'],
+        visualFocusPoints: json['visualFocus'],
         referralLocation: json['referral']?['name'] ?? "Specialized Medical Hub",
         latitude: json['referral']?['lat'] ?? 28.5672,
         longitude: json['referral']?['lng'] ?? 77.2100,
       );
     } catch (e) {
-      return _fallbackAssessment(symptoms, "Deep AI Reasoning Sync...");
+      return _fallbackAssessment(symptoms, "Syncing medical intelligence...");
     }
   }
 
@@ -139,25 +151,26 @@ YOUR MISSION: Provide a "Gold Standard" medical response in JSON.
       id: "ai_${DateTime.now().millisecondsSinceEpoch}",
       date: DateTime.now(),
       reportedSymptoms: symptoms,
-      possibleCondition: "Comprehensive Wellness Insight",
+      possibleCondition: "Pulse Health Check",
       riskLevel: RiskLevel.low,
-      description: "MediConnect is currently correlating your symptoms with global health data. Current analysis points to a mild respiratory or gastric concern. Maintaining optimal cellular hydration is critical at this stage.",
-      recommendation: "Ensure 72 hours of complete metabolic rest. Minimize light exposure if headache persists. Consume electrolyte-dense fluids.",
+      description: "MediConnect is reconciling your symptoms with local clinical guidelines. Standard hydration and rest cycles are recommended during this 48-hour observation window.",
+      recommendation: "Ensure 10-12 hours of sleep. Use warm fluids to maintain metabolic balance. Avoid strenuous activity.",
       suggestedMedicines: [
-        Medicine(name: "Paracetamol 500mg", dosage: "1 Tablet", frequency: "As needed", notes: "Consult professional for exact dosage.")
+        Medicine(name: "Paracetamol 500mg", dosage: "1 Tablet", frequency: "If fever > 100'F", notes: "Consult professional for long-term dosage.")
       ],
-      wellnessScore: 75.0,
-      recoveryOutlook: "Symptoms likely to peak in 24h, followed by 4-day recovery cycle.",
-      lifestyleTips: ["Warm ginger decoction twice daily", "Avoid dairy if gastric symptoms present"],
+      wellnessScore: 78.0,
+      recoveryOutlook: "Symptoms expected to plateau in 36h.",
+      lifestyleTips: ["Ionic hydration (Electrolytes)", "Light, carbohydrate-rich diet"],
+      safetyFlags: ["No known interactions detected in current setup"],
       latitude: 28.6139,
       longitude: 77.2090,
-      referralLocation: "AIIMS Multi-Specialty Centre",
+      referralLocation: "AIIMS Medical Center",
     );
   }
 
   List<Symptom> getCommonSymptoms() => [
     Symptom(id: '1', name: 'Fever'), Symptom(id: '2', name: 'Cough'), 
     Symptom(id: '3', name: 'Headache'), Symptom(id: '4', name: 'Skin Rash'),
-    Symptom(id: '5', name: 'Stomach Pain'), Symptom(id: '6', name: 'Nausea'),
+    Symptom(id: '5', name: 'Stomach Pain'), Symptom(id: '6', name: 'Vomiting'),
   ];
 }

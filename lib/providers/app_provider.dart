@@ -56,6 +56,7 @@ class AppProvider with ChangeNotifier {
       HealthAssessment result = await _aiService.analyzeSymptoms(
         symptoms: symptomNames,
         additionalText: otherSymptoms,
+        pastHistory: _history,
         imageBytes: imageBytes,
         language: _currentUser?.language ?? 'English',
       );
