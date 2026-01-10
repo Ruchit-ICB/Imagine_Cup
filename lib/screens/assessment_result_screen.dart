@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'dart:math' as math;
 import '../models/data_models.dart';
 import '../providers/app_provider.dart';
 import '../core/theme.dart';
