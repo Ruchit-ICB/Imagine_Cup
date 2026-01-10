@@ -36,13 +36,19 @@ class HealthAssessment {
   final RiskLevel riskLevel;
   final String description;
   final String recommendation;
-  final String? referralLocation; // Description/Name
+  final String? referralLocation;
   final double? latitude;
   final double? longitude;
   final List<Medicine> suggestedMedicines;
   final List<String> homeRemedies;
   final List<String> warningSignsToWatch;
   final String disclaimer;
+  
+  // Imagine Cup AI Enhancements
+  final double wellnessScore; // 0-100 Predictive Score
+  final String recoveryOutlook; // Timeline explanation
+  final String? ocrAnalysis; // Data parsed from Prescription/Image
+  final List<String> lifestyleTips; // Holistic coaching
 
   HealthAssessment({
     required this.id,
@@ -58,6 +64,10 @@ class HealthAssessment {
     this.suggestedMedicines = const [],
     this.homeRemedies = const [],
     this.warningSignsToWatch = const [],
+    this.wellnessScore = 80.0,
+    this.recoveryOutlook = "Standard recovery expected.",
+    this.ocrAnalysis,
+    this.lifestyleTips = const [],
     this.disclaimer = "This is AI-generated advice. Always consult a healthcare professional for medical decisions.",
   });
 }
